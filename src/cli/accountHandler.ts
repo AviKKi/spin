@@ -2,6 +2,7 @@ import {
   CreateTableCommand,
   DynamoDBClient,
   TagResourceCommand,
+  waitUntilTableExists,
 } from "@aws-sdk/client-dynamodb";
 import { loadGlobalConfig, saveGlobalConfig } from "./config.js";
 import { Account } from "../models/index.js";
@@ -15,15 +16,21 @@ export async function createNewAccount(input: {
   const dynamoClient = new DynamoDBClient({
     region: region,
   });
-
+  const tableName = `${name}-spin-account`;
   const createTableCommand = new CreateTableCommand({
-    TableName: `${name}-spin-account`,
+    TableName: tableName,
     KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
     AttributeDefinitions: [{ AttributeName: "id", AttributeType: "S" }],
     ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 },
   });
 
   const table = await dynamoClient.send(createTableCommand);
+
+  // Wait for it to become ACTIVE (max 60 seconds by default)
+  await waitUntilTableExists(
+    { client: dynamoClient, maxWaitTime: 60 }, // this timeout is a potential bug 🐛🐛 @techDebt
+    { TableName: tableName }
+  );
 
   // tag table with sping-cli true
   const tagTableCommand = new TagResourceCommand({
@@ -42,7 +49,7 @@ export async function createNewAccount(input: {
     sk: "METADATA",
     itemType: "ACCOUNT",
     createdAt: new Date().toISOString(),
-  }
+  };
   globalConfig.accounts.push(newAccount);
   await saveGlobalConfig(globalConfig);
 
