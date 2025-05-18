@@ -1,16 +1,25 @@
+#!/usr/bin/env node
+
 import { Command } from 'commander';
-import { registerInitCommand } from './commands/init';
-import { registerDeployCommand } from './commands/deploy';
-// Import other command registration functions here
+// import { upCommand } from './commands/up.js';
+import { initCommand } from './commands/init.js';
+import { checkAWSIdentity } from './utils/aws.js';
+import chalk from 'chalk';
 
-export function loadCommands(program: Command): void {
-  registerInitCommand(program);
-  registerDeployCommand(program);
-  // Register other commands here
+const program = new Command();
 
-  // Fallback for unknown commands
-  program.on('command:*', () => {
-    console.error('Invalid command: %s\nSee --help for a list of available commands.', program.args.join(' '));
-    process.exit(1);
+program
+  .name('spin')
+  .description('CLI tool for managing Spin accounts and deployments')
+  .version('1.0.0')
+  .hook('preSubcommand', async (thisCommand, actionCommand) => {
+    // Check AWS identity first
+    const identity = await checkAWSIdentity();
+    console.log(chalk.blue(`Using AWS account: ${identity.account}`));
   });
-} 
+
+// Register commands
+// upCommand(program);
+initCommand(program);
+
+program.parse(); 
