@@ -67,8 +67,7 @@ export class ProjectRepository extends BaseRepository {
    * @param project - Project data excluding PK/SK/itemType.
    */
   async createProject(project: Omit<Project, "pk" | "sk" | "itemType">): Promise<void> {
-    const item: Project & {id: string} = {
-        id: `PROJECT#${project.projectId}`,
+    const item: Project  = {
       pk: `PROJECT#${project.projectId}`,
       sk: "METADATA",
       itemType: "PROJECT",

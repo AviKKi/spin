@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { loadGlobalConfig, saveGlobalConfig } from "./config.js";
 import { Account } from "../models/index.js";
+import { createRepositories } from "../repositories/index.js";
 
 export async function createNewAccount(input: {
   name: string;
@@ -19,8 +20,8 @@ export async function createNewAccount(input: {
   const tableName = `${name}-spin-account`;
   const createTableCommand = new CreateTableCommand({
     TableName: tableName,
-    KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-    AttributeDefinitions: [{ AttributeName: "id", AttributeType: "S" }],
+    KeySchema: [{ AttributeName: "pk", KeyType: "HASH" }],
+    AttributeDefinitions: [{ AttributeName: "pk", AttributeType: "S" }],
     ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 },
   });
 
@@ -52,6 +53,15 @@ export async function createNewAccount(input: {
   };
   globalConfig.accounts.push(newAccount);
   await saveGlobalConfig(globalConfig);
+
+  // Save account to DynamoDB using AccountRepository
+  const repositories = createRepositories(region, tableName);
+  await repositories.accountRepo.saveAccount({
+    name,
+    defaultRegion: region,
+    tableName,
+    createdAt: new Date().toISOString(),
+  });
 
   return newAccount;
 }

@@ -7,7 +7,7 @@ import { createRepositories } from "../repositories/index.js";
 // File paths
 const GLOBAL_CONFIG_DIR = path.join(os.homedir(), ".spin");
 const GLOBAL_CONFIG_FILE = path.join(GLOBAL_CONFIG_DIR, "config.json");
-const PROJECT_CONFIG_DIR = path.join(".spin", "projects");
+const PROJECT_CONFIG_DIR = path.join(".spin");
 const PROJECT_CONFIG_FILE = path.join(PROJECT_CONFIG_DIR, "config.json");
 
 /** load global config from ~/.spin/config.json */
