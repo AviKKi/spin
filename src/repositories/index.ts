@@ -315,10 +315,10 @@ export class ResourceRepository extends BaseRepository {
    * @param projectId - The project identifier.
    * @returns Promise resolving to the Resource item or null.
    */
-  async getResource(projectId: string): Promise<Resource | null> {
+  async getResource(projectId: string, environment: string): Promise<Resource | null> {
     const cmd = new GetCommand({
       TableName: this.tableName,
-      Key: { pk: `PROJECT#${projectId}`, sk: "RESOURCE#staticAssets" },
+      Key: { pk: `PROJECT#${projectId}`, sk: `RESOURCE#${environment}` },
     });
     const { Item } = await this.client.send(cmd);
     return Item as Resource | null;

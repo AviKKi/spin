@@ -31,6 +31,11 @@ export async function loadGlobalConfig(): Promise<GlobalConfig> {
   }
 }
 
+export async function loadProjectConfig(): Promise<Project> {
+  const configData = await fs.promises.readFile(PROJECT_CONFIG_FILE, "utf-8");
+  return JSON.parse(configData);
+}
+
 export async function projectConfigExists(): Promise<boolean> {
   return fs.existsSync(PROJECT_CONFIG_FILE);
 }
