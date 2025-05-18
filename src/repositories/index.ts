@@ -301,7 +301,7 @@ export class ResourceRepository extends BaseRepository {
   async upsertResource(resource: Omit<Resource, "pk" | "sk" | "itemType">): Promise<void> {
     const item: Resource = {
       pk: `PROJECT#${resource.projectId}`,
-      sk: "RESOURCE#staticAssets",
+      sk: `RESOURCES#${resource.environment}`,
       itemType: "RESOURCE",
       ...resource,
     };

@@ -37,6 +37,26 @@ export interface Project {
   account: string;
   status: string;
   createdAt: string;
+  // sub-domains of this will be used for hosting all environments of this project
+  // this is default value for ProjectEnvironment.domain
+  defaultDomain: string;
+  // list of environments for this project
+  environments: ProjectEnvironment[];
+}
+
+/**
+ * Project environment entity
+ * note we only allow one active deployment per environment
+ */
+export interface ProjectEnvironment {
+  // name of the environment, usually dev, prod, staging, etc. or branch name
+  name: string;
+  // route53 domain, sub-domains will be generated on this to host the project
+  domain: string;
+  // default value is environment name
+  subDomain: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 
@@ -82,11 +102,13 @@ export interface Alias {
 export interface Resource {
   // DynamoDB keys
   pk: `PROJECT#${string}`;
-  sk: "RESOURCE#staticAssets";
+  // example `RESOURCES#staging` or `RESOURCES#main`
+  sk: `RESOURCES#${string}`;
   itemType: "RESOURCE";
   
   // Business fields
   projectId: string;
+  environment: string;
   buckets: string[];
   certs: string[];
   cloudfrontId: string;
