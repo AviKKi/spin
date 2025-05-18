@@ -5,6 +5,7 @@ import { Command, CommanderError } from "commander";
 import { initCommand } from "./commands/init.js";
 import { checkAWSIdentity } from "./utils/aws.js";
 import chalk from "chalk";
+import { upCommand } from "./commands/up.js";
 
 const program = new Command();
 
@@ -18,18 +19,18 @@ program
     console.log(chalk.blue(`Using AWS account: ${identity.account}`));
   })
   .exitOverride((err) => {
-    // if (err instanceof CommanderError) {
+    if (err instanceof CommanderError) {
     //   // these are errors like unknown option, missing argument, etc.
-    //   console.error(err.message);
-    //   process.exit(err.exitCode);
-    // }
+      console.error(err.message);
+      process.exit(err.exitCode);
+    }
     // any other error (including from your action handlers):
     console.error("❌ Unhandled error:\n", (err as Error).stack);
     process.exit(1);
   });
 
 // Register commands
-// upCommand(program);
+upCommand(program);
 initCommand(program);
 
 program.parse();
