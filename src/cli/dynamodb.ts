@@ -1,8 +1,8 @@
 import { DynamoDBClient, ListTablesCommand, ListTagsOfResourceCommand } from '@aws-sdk/client-dynamodb';
 import { fromIni } from '@aws-sdk/credential-providers';
-import { SpinAccount } from './config.js';
+import { Account } from '../models/index.js';
 
-export async function discoverSpinAccounts(region: string, profile?: string): Promise<SpinAccount[]> {
+export async function discoverSpinAccounts(region: string, profile?: string): Promise<Account[]> {
   const client = new DynamoDBClient({
     region,
     ...(profile && { credentials: fromIni({ profile }) })
@@ -18,7 +18,7 @@ export async function discoverSpinAccounts(region: string, profile?: string): Pr
     }
 
     // Filter tables with spin-cli tag
-    const spinAccounts: SpinAccount[] = [];
+    const spinAccounts: Account[] = [];
     
     for (const tableName of TableNames) {
       const listTagsCommand = new ListTagsOfResourceCommand({
@@ -29,9 +29,12 @@ export async function discoverSpinAccounts(region: string, profile?: string): Pr
         const { Tags } = await client.send(listTagsCommand);
         if (Tags?.some(tag => tag.Key === 'spin-cli' && tag.Value === 'true')) {
           spinAccounts.push({
+            itemType: "ACCOUNT",
+            pk: "ACCOUNT",
+            sk: "METADATA",
             name: tableName,
             tableName,
-            defaultRegion: region
+            defaultRegion: region,createdAt: new Date().toISOString()
           });
         }
       } catch (error) {

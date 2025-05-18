@@ -2,7 +2,8 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { DynamoDBClient, CreateTableCommand, TagResourceCommand } from '@aws-sdk/client-dynamodb';
 import { fromIni } from '@aws-sdk/credential-providers';
-import {  createProjectConfig, loadGlobalConfig, projectConfigExists,  SpinAccount, SpinProjectConfig } from '../config.js';
+import {  createProjectConfig, loadGlobalConfig, projectConfigExists,   } from '../config.js';
+import { Account, ProjectConfig } from '../../models/index.js';
 import { checkAWSIdentity } from '../utils/aws.js';
 import Enquirer from 'enquirer';
 import { createNewAccount } from '../accountHandler.js';
@@ -29,7 +30,7 @@ export function initCommand(program: Command) {
                 choices: [...globalConfig.accounts.map(account => account.name), 'Create new account']
             }
         ]);
-        let account: SpinAccount;
+        let account: Account;
         if((input as any).account === 'Create new account'){
             const createProjectInput = await Enquirer.prompt([
                 {
@@ -84,7 +85,7 @@ export function initCommand(program: Command) {
             },
 
         ]);
-        const projectConfig: SpinProjectConfig = {
+        const projectConfig: ProjectConfig = {
             ...(projectConfigInput as any),
             account: account.name,
             region: account.defaultRegion

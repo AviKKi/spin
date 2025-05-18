@@ -6,61 +6,13 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-
-// ----- Entity Interfaces -----
-
-export interface Account {
-  pk: "ACCOUNT";
-  sk: "METADATA";
-  itemType: "ACCOUNT";
-  createdAt: string;
-  defaultRegion: string;
-  tableName: string;
-  name: string;
-}
-
-export interface Project {
-  pk: `PROJECT#${string}`;
-  sk: "METADATA";
-  itemType: "PROJECT";
-  projectId: string;
-  projectName: string;
-  region: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface Deployment {
-  pk: `PROJECT#${string}`;
-  sk: `DEPLOY#${string}`;
-  itemType: "DEPLOYMENT";
-  projectId: string;
-  createdAt: string;
-  status: string;
-  completedAt?: string;
-}
-
-export interface Alias {
-  pk: `PROJECT#${string}`;
-  sk: `ALIAS#${string}`;
-  itemType: "ALIAS";
-  projectId: string;
-  aliasDomain: string;
-  destDeploySK: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface Resource {
-  pk: `PROJECT#${string}`;
-  sk: "RESOURCE#staticAssets";
-  itemType: "RESOURCE";
-  projectId: string;
-  buckets: string[];
-  certs: string[];
-  cloudfrontId: string;
-  createdAt: string;
-}
+import {
+  Account,
+  Project,
+  Deployment,
+  Alias,
+  Resource
+} from "../models/index.js";
 
 // ----- Base Repository -----
 
