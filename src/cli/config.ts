@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { Account, GlobalConfig, ProjectConfig } from '../models/index.js';
+import { Account, GlobalConfig, Project } from '../models/index.js';
 
 // File paths
 const GLOBAL_CONFIG_DIR = path.join(os.homedir(), '.spin');
@@ -34,7 +34,7 @@ export async function projectConfigExists(): Promise<boolean> {
   return fs.existsSync(PROJECT_CONFIG_FILE);
 }
 
-export async function createProjectConfig(config: ProjectConfig): Promise<void> {
+export async function createProjectConfig(config: Project): Promise<void> {
   if (!fs.existsSync(PROJECT_CONFIG_DIR)) {
     fs.mkdirSync(PROJECT_CONFIG_DIR, { recursive: true });
   }

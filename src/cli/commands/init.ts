@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { DynamoDBClient, CreateTableCommand, TagResourceCommand } from '@aws-sdk/client-dynamodb';
 import { fromIni } from '@aws-sdk/credential-providers';
 import {  createProjectConfig, loadGlobalConfig, projectConfigExists,   } from '../config.js';
-import { Account, ProjectConfig } from '../../models/index.js';
+import { Account, Project } from '../../models/index.js';
 import { checkAWSIdentity } from '../utils/aws.js';
 import Enquirer from 'enquirer';
 import { createNewAccount } from '../accountHandler.js';
@@ -85,7 +85,7 @@ export function initCommand(program: Command) {
             },
 
         ]);
-        const projectConfig: ProjectConfig = {
+        const projectConfig: Project = {
             ...(projectConfigInput as any),
             account: account.name,
             region: account.defaultRegion

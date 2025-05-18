@@ -39,6 +39,10 @@ export interface Project {
   createdAt: string;
 }
 
+
+
+  
+
 /**
  * Deployment entity
  */
@@ -95,13 +99,4 @@ export interface Resource {
 export interface GlobalConfig {
   accounts: Account[];
   defaultAccount?: string;
-}
-
-/**
- * Project configuration
- */
-export interface ProjectConfig {
-  projectName: string;
-  account: string;
-  region: string;
 }
