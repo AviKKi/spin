@@ -20,9 +20,15 @@ export async function createNewAccount(input: {
   const tableName = `${name}-spin-account`;
   const createTableCommand = new CreateTableCommand({
     TableName: tableName,
-    KeySchema: [{ AttributeName: "pk", KeyType: "HASH" }],
-    AttributeDefinitions: [{ AttributeName: "pk", AttributeType: "S" }],
-    ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 },
+    KeySchema: [
+      { AttributeName: "pk", KeyType: "HASH" }, // partition key
+      { AttributeName: "sk", KeyType: "RANGE" },
+    ], // sort key],
+    AttributeDefinitions: [
+      { AttributeName: "pk", AttributeType: "S" },
+      { AttributeName: "sk", AttributeType: "S" },
+    ],
+    BillingMode: "PAY_PER_REQUEST",
   });
 
   const table = await dynamoClient.send(createTableCommand);
