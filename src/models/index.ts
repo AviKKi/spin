@@ -39,7 +39,12 @@ export interface Project {
   createdAt: string;
   // sub-domains of this will be used for hosting all environments of this project
   // this is default value for ProjectEnvironment.domain
-  defaultDomain: string;
+  domain: string;
+  subDomain: string;
+  buildCommand: string;
+  buildDirectory: string;
+
+  resources?: Resource;
   // list of environments for this project
   environments: ProjectEnvironment[];
 }

@@ -6,6 +6,7 @@ import { spawn } from "child_process";
 import { checkAWSIdentity } from "../utils/aws.js";
 import { loadGlobalConfig, loadProjectConfig, projectConfigExists } from "../config.js";
 import { createRepositories } from "../../repositories/index.js";
+import { createResources } from "../../resourceManager/createResources.js";
 
 export function upCommand(program: Command) {
   program
@@ -21,26 +22,21 @@ export function upCommand(program: Command) {
           process.exit(1);
         }
         const projectConfig = await loadProjectConfig();
-        const globalConfig = await loadGlobalConfig();
-        const account = globalConfig.accounts.find(
-          (account) => account.name === projectConfig.account
-        );
-        if (!account) {
-          console.error(chalk.red("Account not found"));
-          process.exit(1);
+        if(!projectConfig.resources){
+          // create resources for this project
+          await createResources(projectConfig);
         }
-        console.log("deploying to environment", environment);
+        // run build command
+        const buildCommand = projectConfig.buildCommand;
+        const buildDirectory = projectConfig.buildDirectory;
+        const buildProcess = spawn(buildCommand, { cwd: buildDirectory });
+        buildProcess.stdout.on('data', (data) => {
+          console.log(data.toString());
+        });
 
-        const { resourceRepo } = createRepositories(account.defaultRegion, account.tableName);
-
-        // check if resources exists for this project
-        const resources = await resourceRepo.getResource(projectConfig.pk, "staging");
-        // if not, create resources for default staging environment
-        if(!resources){
-
-        }
-
-        // if exists continue with build and deploy
+        // copy files to s3 bucket
+        // invalidate cloudfront distribution
+        
 
       } catch (error) {
         console.error(chalk.red("Error:"), error);

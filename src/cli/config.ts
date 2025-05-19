@@ -40,7 +40,7 @@ export async function projectConfigExists(): Promise<boolean> {
   return fs.existsSync(PROJECT_CONFIG_FILE);
 }
 
-export async function createProjectConfig(config: Project, region: string, tableName: string): Promise<void> {
+export async function saveProjectConfig(config: Project): Promise<void> {
   // Save locally
   if (!fs.existsSync(PROJECT_CONFIG_DIR)) {
     fs.mkdirSync(PROJECT_CONFIG_DIR, { recursive: true });
@@ -51,8 +51,7 @@ export async function createProjectConfig(config: Project, region: string, table
   );
 
   // Save to DynamoDB
-  const { projectRepo } = createRepositories(region, tableName);
-  await projectRepo.createProject(config);
+  
 }
 
 export async function saveGlobalConfig(config: GlobalConfig): Promise<void> {

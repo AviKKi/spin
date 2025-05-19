@@ -2,12 +2,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { DynamoDBClient, CreateTableCommand, TagResourceCommand } from '@aws-sdk/client-dynamodb';
 import { fromIni } from '@aws-sdk/credential-providers';
-import { createProjectConfig, loadGlobalConfig, projectConfigExists } from '../config.js';
+import { loadGlobalConfig, projectConfigExists, saveProjectConfig } from '../config.js';
 import { Account, Project } from '../../models/index.js';
 import { checkAWSIdentity } from '../utils/aws.js';
 import Enquirer from 'enquirer';
 import { createNewAccount } from '../accountHandler.js';
 import { randomUUID } from 'crypto';
+import { getAllDomains } from '../utils/route53.js';
 
 export function initCommand(program: Command) {
   program
@@ -21,46 +22,7 @@ export function initCommand(program: Command) {
             console.log(chalk.red('Project config already exists'));
             return;
         }
-        const globalConfig = await loadGlobalConfig();
-        // show enquirer list of account from global config, with last option to create new account
-        const input = await Enquirer.prompt([
-            {
-                type: 'select',
-                name: 'account',
-                message: 'Select an account',
-                choices: [...globalConfig.accounts.map(account => account.name), 'Create new account']
-            }
-        ]);
-        let account: Account;
-        if((input as any).account === 'Create new account'){
-            const createProjectInput = await Enquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'name',
-                    message: 'Enter the name of the new account'
-                }, 
-                {
-                    type: 'input',
-                    name: 'region',
-                    message: 'Enter the region of the new account',
-                    initial: 'us-east-1'
-                }
-            ]);
-            account = await createNewAccount({...(createProjectInput as any)});
-        } else {
-            const matchingAccount = globalConfig.accounts.find(account => account.name === (input as any).account);
-            if(!matchingAccount){
-                console.log(chalk.red('Account not found'));
-                return;
-            }
-            account = matchingAccount;
-        }
-        // input project config, with following fields
-        // projectName: string, default folder name
-        // buildCommand: string, default npm run build
-        // buildDirectory: string, default ./dist
-        // region: string, default region
-        const projectConfigInput = await Enquirer.prompt([
+        const projectConfigInput: {projectName: string, buildCommand: string, buildDirectory: string, region: string} = await Enquirer.prompt([
             {
                 type: 'input',
                 name: 'projectName',
@@ -82,24 +44,40 @@ export function initCommand(program: Command) {
                 type: 'input',
                 name: 'region',
                 message: 'Enter the region of the project',
-                initial: account.defaultRegion
+                initial: 'us-east-1'
             },
         ]);
-
-        const projectId = randomUUID();
-        const projectConfig: Project = {
-            pk: `PROJECT#${projectId}`,
-            sk: "METADATA",
-            itemType: "PROJECT",
-            projectId,
-            status: "INITIALIZED",
+        
+        const domains = await getAllDomains(projectConfigInput.region as string);
+        const domainPrompt: {domain: string, subdomain: string} = await Enquirer.prompt([
+            {
+                type: 'select',
+                name: 'domain',
+                message: 'Select the domain to use',
+                choices: domains.map((domain) => ({ name: domain, value: domain })),
+            },
+            {
+                type: 'input',
+                name: 'subdomain',
+                message: 'Enter the subdomain to use',
+                initial: projectConfigInput.projectName + '.dev'
+            }
+        ]);
+        saveProjectConfig({
+            projectName: projectConfigInput.projectName,
+            buildCommand: projectConfigInput.buildCommand,
+            buildDirectory: projectConfigInput.buildDirectory,
+            region: projectConfigInput.region,
+            domain: domainPrompt.domain,
+            subDomain: domainPrompt.subdomain,
+            projectId: randomUUID(),
+            pk: `PROJECT#${projectConfigInput.projectName}`,
+            sk: 'METADATA',
+            itemType: 'PROJECT',
+            status: 'ACTIVE',
             createdAt: new Date().toISOString(),
-            ...(projectConfigInput as any),
-            account: account.name,
-            region: account.defaultRegion
-        };
-
-        await createProjectConfig(projectConfig, account.defaultRegion, account.tableName);
-        console.log(chalk.green('Project config created successfully'));
+            account: 'default',
+            environments: [],
+        });
     });
 } 
