@@ -7,6 +7,12 @@ import {
   createCloudFrontDistribution,
   createRoute53Record,
 } from "./createMethods.js";
+import {
+  deleteBucket,
+  deleteCertificate,
+  deleteDistribution,
+  deleteRoute53Record,
+} from "./deleteMethods.js";
 
 const TAGS = [{ Key: 'spi-cli', Value: 'true' }];
 
@@ -70,10 +76,44 @@ async function createResources(project: Project, callback?: (message: string) =>
     }
 }
 
-async function deleteResources(project: Project, callback?: (message: string) => void){
-    // delete resources for SPA on AWS
-    // save those resources in state
-    // in case of exception prevent stale state
+async function deleteResources(project: Project, callback?: (message: string) => void) {
+    try {
+        if (!project.resources) {
+            callback?.('No resources to delete');
+            return;
+        }
+
+        const { buckets, certs, cloudfrontId } = project.resources;
+        const { domain, region = 'us-east-1' } = project;
+
+        // Step 1: Delete Route53 record
+        callback?.('Deleting Route53 record...');
+        const hostedZoneId = await getHostedZoneId(domain, region);
+        await deleteRoute53Record(hostedZoneId, domain, cloudfrontId);
+
+        // Step 2: Delete CloudFront distribution
+        callback?.('Deleting CloudFront distribution...');
+        await deleteDistribution(cloudfrontId);
+
+        // Step 3: Delete ACM certificate
+        callback?.('Deleting SSL certificate...');
+        for (const certArn of certs) {
+            await deleteCertificate(certArn);
+        }
+
+        // Step 4: Delete S3 bucket
+        callback?.('Deleting S3 bucket...');
+        for (const bucketName of buckets) {
+            await deleteBucket(bucketName, region);
+        }
+
+        // Clear resources from project state
+        project.resources = undefined;
+        callback?.('All resources deleted successfully!');
+    } catch (error) {
+        callback?.(`Error deleting resources: ${error}`);
+        throw error;
+    }
 }
 
 export { createResources, deleteResources };
