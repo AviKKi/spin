@@ -5,6 +5,7 @@ import {
   PutBucketWebsiteCommand,
   PutBucketTaggingCommand,
   waitUntilBucketExists,
+  PutPublicAccessBlockCommand,
 } from "@aws-sdk/client-s3";
 import {
   ACMClient,
@@ -34,6 +35,12 @@ import {
 const REGION = "us-east-1";
 const TAGS = [{ Key: "spi-cli", Value: "true" }];
 
+// Validate domain name format
+function validateDomainName(domainName: string): boolean {
+  const domainRegex = /^(\*\.)?(((?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9])\.)+((?!-)[A-Za-z0-9-]{1,62}[A-Za-z0-9])$/;
+  return domainRegex.test(domainName);
+}
+
 // Initialize AWS SDK v3 clients
 const acmClient = new ACMClient({ region: REGION });
 const cfClient = new CloudFrontClient({ region: REGION });
@@ -53,7 +60,24 @@ async function createBucket(bucketName: string, region: string) {
   );
   console.log(`Bucket ready: ${bucketName}`);
 
-  // Apply public-read policy
+  // Disable public access blocks
+  await s3Client.send(
+    new PutPublicAccessBlockCommand({
+      Bucket: bucketName,
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: false,
+        BlockPublicPolicy: false,
+        IgnorePublicAcls: false,
+        RestrictPublicBuckets: false,
+      },
+    })
+  );
+  console.log(`Public access blocks disabled.`);
+
+  // Wait for settings to propagate (AWS recommends waiting a few seconds)
+  await new Promise(resolve => setTimeout(resolve, 5000));
+
+  // Apply public-read policy with retries
   const policy = {
     Version: "2012-10-17",
     Statement: [
@@ -66,13 +90,27 @@ async function createBucket(bucketName: string, region: string) {
       },
     ],
   };
-  await s3Client.send(
-    new PutBucketPolicyCommand({
-      Bucket: bucketName,
-      Policy: JSON.stringify(policy),
-    })
-  );
-  console.log(`Bucket policy applied.`);
+
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      await s3Client.send(
+        new PutBucketPolicyCommand({
+          Bucket: bucketName,
+          Policy: JSON.stringify(policy),
+        })
+      );
+      console.log(`Bucket policy applied.`);
+      break;
+    } catch (error: any) {
+      retries--;
+      if (retries === 0) {
+        throw new Error(`Failed to apply bucket policy after multiple attempts: ${error.message}`);
+      }
+      console.log(`Retrying bucket policy application... (${retries} attempts remaining)`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
 
   // Configure website hosting
   await s3Client.send(
@@ -117,6 +155,10 @@ async function requestCertificate(
   hostedZoneId: string,
   region: string
 ): Promise<string> {
+  if (!validateDomainName(domainName)) {
+    throw new Error(`Invalid domain name format: ${domainName}. Domain name must follow AWS ACM requirements.`);
+  }
+  
   const acmClient = new ACMClient({ region });
   const route53Client = new Route53Client({ region });
   const { CertificateArn } = await acmClient.send(
@@ -212,6 +254,10 @@ async function createCloudFrontDistribution(
           Enabled: false,
           Quantity: 0,
         },
+        MinTTL: 0,
+        DefaultTTL: 86400,
+        MaxTTL: 31536000,
+        Compress: true,
       },
       ViewerCertificate: {
         ACMCertificateArn: certificateArn,
@@ -229,7 +275,7 @@ async function createCloudFrontDistribution(
 
   // Wait until deployed
   await waitUntilDistributionDeployed(
-    { client: cfClient, maxWaitTime: 600 },
+    { client: cfClient, maxWaitTime: 600*20 },
     { Id: Distribution.Id! }
   );
   console.log(`Distribution deployed: ${Distribution.DomainName}`);

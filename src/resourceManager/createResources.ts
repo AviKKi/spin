@@ -20,58 +20,89 @@ const TAGS = [{ Key: 'spi-cli', Value: 'true' }];
  * save those resources in state
  * in case of exception prevent stale state
  */
-async function createResources(project: Project, callback?: (message: string) => void) {
+async function createResources(
+  project: Project, 
+  updateProject?: (project: Project) => Promise<void>,
+  callback?: (message: string) => void
+) {
     try {
         // Extract required information from project
-        const { domain, region = 'us-east-1' } = project;
-        const bucketName = `${domain.replace(/\./g, '-')}-${Date.now()}`;
+        const { domain, subDomain = '', region = 'us-east-1' } = project;
+        const fullDomain = subDomain ? `${subDomain}.${domain}` : domain;
+        const environment = project.environments[0]?.name || 'main';
 
-        // Step 1: Create S3 bucket
-        callback?.('Creating S3 bucket...');
-        await createBucket(bucketName, region);
+        // Initialize or get existing resources
+        let resource: Resource = project.resources || {
+            pk: `PROJECT#${project.projectId}`,
+            sk: `RESOURCES#${environment}`,
+            itemType: "RESOURCE",
+            projectId: project.projectId,
+            environment: environment,
+            buckets: [],
+            certs: [],
+            cloudfrontId: '',
+            createdAt: new Date().toISOString()
+        };
+
+        // Step 1: Create S3 bucket if not exists
+        let bucketName = resource.buckets[0];
+        if (!bucketName) {
+            callback?.('Creating S3 bucket...');
+            bucketName = `${fullDomain.replace(/\./g, '-')}-${Date.now()}`;
+            await createBucket(bucketName, region);
+            resource.buckets = [bucketName];
+            // Update project after bucket creation
+            project.resources = resource;
+            if (updateProject) await updateProject(project);
+        } else {
+            callback?.('S3 bucket already exists, skipping creation.');
+        }
 
         // Step 2: Get hosted zone ID
         callback?.('Getting hosted zone ID...');
         const hostedZoneId = await getHostedZoneId(domain, region);
 
-        // Step 3: Request and validate SSL certificate
-        callback?.('Requesting SSL certificate...');
-        const certificateArn = await requestCertificate(domain, hostedZoneId, region);
+        // Step 3: Request and validate SSL certificate if not exists
+        let certificateArn = resource.certs[0];
+        if (!certificateArn) {
+            callback?.('Requesting SSL certificate...');
+            certificateArn = await requestCertificate(fullDomain, hostedZoneId, region);
+            resource.certs = [certificateArn];
+            // Update project after certificate creation
+            project.resources = resource;
+            if (updateProject) await updateProject(project);
+        } else {
+            callback?.('SSL certificate already exists, skipping creation.');
+        }
 
-        // Step 4: Create CloudFront distribution
-        callback?.('Creating CloudFront distribution...');
-        const distributionDomain = await createCloudFrontDistribution(
-            bucketName,
-            domain,
-            certificateArn,
-            region
-        );
+        // Step 4: Create CloudFront distribution if not exists
+        let distributionDomain = resource.cloudfrontId;
+        if (!distributionDomain) {
+            callback?.('Creating CloudFront distribution...');
+            distributionDomain = await createCloudFrontDistribution(
+                bucketName,
+                fullDomain,
+                certificateArn,
+                region
+            );
+            resource.cloudfrontId = distributionDomain;
+            // Update project after distribution creation
+            project.resources = resource;
+            if (updateProject) await updateProject(project);
+        } else {
+            callback?.('CloudFront distribution already exists, skipping creation.');
+        }
 
-        // Step 5: Create Route53 record
-        callback?.('Creating Route53 record...');
-        await createRoute53Record(hostedZoneId, domain, distributionDomain, region);
+        // Step 5: Create Route53 record if not exists
+        // Note: We can't easily check if Route53 record exists, so we'll always try to create/update it
+        callback?.('Creating/Updating Route53 record...');
+        await createRoute53Record(hostedZoneId, fullDomain, distributionDomain, region);
 
-        // Save the created resources in project state
-        const resource: Resource = {
-            pk: `PROJECT#${project.projectId}`,
-            sk: `RESOURCES#${project.environments[0]?.name || 'main'}`,
-            itemType: "RESOURCE",
-            projectId: project.projectId,
-            environment: project.environments[0]?.name || 'main',
-            buckets: [bucketName],
-            certs: [certificateArn],
-            cloudfrontId: distributionDomain,
-            createdAt: new Date().toISOString()
-        };
-
-        project.resources = resource;
         callback?.('Infrastructure creation completed successfully!');
         return project;
     } catch (error) {
         // In case of error, clean up any created resources
-        if (project.resources) {
-            await deleteResources(project, callback);
-        }
+        
         throw error;
     }
 }
@@ -84,12 +115,13 @@ async function deleteResources(project: Project, callback?: (message: string) =>
         }
 
         const { buckets, certs, cloudfrontId } = project.resources;
-        const { domain, region = 'us-east-1' } = project;
+        const { domain, subDomain = '', region = 'us-east-1' } = project;
+        const fullDomain = subDomain ? `${subDomain}.${domain}` : domain;
 
         // Step 1: Delete Route53 record
         callback?.('Deleting Route53 record...');
         const hostedZoneId = await getHostedZoneId(domain, region);
-        await deleteRoute53Record(hostedZoneId, domain, cloudfrontId);
+        await deleteRoute53Record(hostedZoneId, fullDomain, cloudfrontId);
 
         // Step 2: Delete CloudFront distribution
         callback?.('Deleting CloudFront distribution...');

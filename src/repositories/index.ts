@@ -79,6 +79,16 @@ export class ProjectRepository extends BaseRepository {
   }
 
   /**
+   * Update an existing project record.
+   * @param project - Complete project data including PK/SK/itemType.
+   */
+  async updateProject(project: Project): Promise<void> {
+    await this.client.send(
+      new PutCommand({ TableName: this.tableName, Item: project })
+    );
+  }
+
+  /**
    * Retrieve a project record by its ID.
    * @param projectId - The unique project identifier.
    * @returns Promise resolving to the Project item or null if not found.
