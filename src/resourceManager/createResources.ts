@@ -107,7 +107,11 @@ async function createResources(
     }
 }
 
-async function deleteResources(project: Project, callback?: (message: string) => void) {
+async function deleteResources(
+    project: Project, 
+    updateProject?: (project: Project) => Promise<void>,
+    callback?: (message: string) => void
+) {
     try {
         if (!project.resources) {
             callback?.('No resources to delete');
@@ -141,6 +145,7 @@ async function deleteResources(project: Project, callback?: (message: string) =>
 
         // Clear resources from project state
         project.resources = undefined;
+        if (updateProject) await updateProject(project);
         callback?.('All resources deleted successfully!');
     } catch (error) {
         callback?.(`Error deleting resources: ${error}`);

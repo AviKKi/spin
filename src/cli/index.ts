@@ -6,6 +6,7 @@ import { initCommand } from "./commands/init.js";
 import { checkAWSIdentity } from "./utils/aws.js";
 import chalk from "chalk";
 import { upCommand } from "./commands/up.js";
+import { purgeCommand } from "./commands/purge.js";
 
 const program = new Command();
 
@@ -32,5 +33,6 @@ program
 // Register commands
 upCommand(program);
 initCommand(program);
+purgeCommand(program);
 
 program.parse();
