@@ -76,16 +76,16 @@ async function createResources(
         }
 
         // Step 4: Create CloudFront distribution if not exists
-        let distributionDomain = resource.cloudfrontId;
-        if (!distributionDomain) {
+        let distributionId = resource.cloudfrontId;
+        if (!distributionId) {
             callback?.('Creating CloudFront distribution...');
-            distributionDomain = await createCloudFrontDistribution(
+            distributionId = await createCloudFrontDistribution(
                 bucketName,
                 fullDomain,
                 certificateArn,
                 region
             );
-            resource.cloudfrontId = distributionDomain;
+            resource.cloudfrontId = distributionId;
             // Update project after distribution creation
             project.resources = resource;
             if (updateProject) await updateProject(project);
@@ -96,7 +96,7 @@ async function createResources(
         // Step 5: Create Route53 record if not exists
         // Note: We can't easily check if Route53 record exists, so we'll always try to create/update it
         callback?.('Creating/Updating Route53 record...');
-        await createRoute53Record(hostedZoneId, fullDomain, distributionDomain, region);
+        await createRoute53Record(hostedZoneId, fullDomain, `${distributionId}.cloudfront.net`, region);
 
         callback?.('Infrastructure creation completed successfully!');
         return project;

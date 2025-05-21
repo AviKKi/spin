@@ -289,7 +289,7 @@ async function createCloudFrontDistribution(
   );
   console.log(`CloudFront distribution tagged.`);
 
-  return Distribution.DomainName!;
+  return Distribution.Id!;
 }
 
 // UPSERT Route53 alias and wait for propagation
